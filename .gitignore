@@ -1,2 +1,3 @@
-hello
-hello.o
+*.o
+*/hello
+20-calc/calc
