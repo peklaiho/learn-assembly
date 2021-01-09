@@ -22,30 +22,28 @@ _start:
 
 ;; subroutine to calculate string length
 ;; input: rax as pointer to string
-;; output: rcx as length of the string
+;; output: rax as length of the string
 _strlen:
-    push rax                    ; store original value of rax in stack
     mov rcx, 0                  ; initialize counter to zero
 _strlenLoop:
-    mov bl, [rax]               ; inspect next byte
-    cmp bl, 0                   ; compare with zero
-    je _strlenFinish            ; if zero, jump to end
+    mov dl, [rax]
+    cmp dl, 0                   ; compare with zero
+    jz _strlenFinish            ; if zero, jump to end
     inc rax                     ; increment rax
     inc rcx                     ; increment counter
     jmp _strlenLoop             ; jump to start of loop
 _strlenFinish:
-    pop rax                     ; restore rax to original value
+    mov rax, rcx                ; return result in rax
     ret
 
 ;; subroutine to print a null-terminated string
 ;; input: rax as pointer to string
 _print:
-    ; read the length into rcx
-    call _strlen
-    ; write to stdout
-    mov rsi, rax
-    mov rdx, rcx
-    mov rax, 1
-    mov rdi, 1
+    push rax                    ; store string address in stack
+    call _strlen                ; calculate length
+    mov rdi, 1                  ; arg1: stdout
+    pop rsi                     ; arg2: string pointer
+    mov rdx, rax                ; arg3: length
+    mov rax, 1                  ; syscall id
     syscall
     ret
