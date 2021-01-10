@@ -1,12 +1,15 @@
 %include "macro.asm"
 
 section .data
-    text db "My awesome asm-app!", 10, 0
+    ; Strings support special escape characters if
+    ; they are defined using backticks.
+    text db `My awesome asm-app!\n\0`
 
 section .text
     extern _printi, _prints, _strlen
     global _start
 
 _start:
-    printi -123
+    prints text
+    printi 123
     exit 0
