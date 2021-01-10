@@ -1,11 +1,44 @@
-%include "macro.asm"
+; File descriptors
+STDIN equ 0
+STDOUT equ 1
+STDERR equ 2
+
+; Syscalls
+SYS_READ equ 0
+SYS_WRITE equ 1
+SYS_EXIT equ 60
 
 section .bss
     buffer1 resb 32
     buffer2 resb 32
 
 section .text
-    global _itos, _printi, _prints, _strlen, _strcpy, _strrcpy
+    global _exit, _gets, _itos, _stoi, _printc, _printi, _prints, _strlen, _strcpy, _strrcpy
+
+;; ---------------------
+;; Exit the program
+;; input: rdi, exit code
+;; ---------------------
+
+_exit:
+    mov rax, SYS_EXIT
+    syscall                     ; rdi is passed on unchanged
+    ret
+
+;; ---------------------
+;; Read input from stdin
+;; Note that result includes newline character
+;; input: rdi, buffer
+;; input: rsi, length
+;; ---------------------
+
+_gets:
+    mov rax, SYS_READ
+    mov rdx, rsi                ; arg3: length
+    mov rsi, rdi                ; arg2: buffer
+    mov rdi, STDIN              ; arg1: file
+    syscall
+    ret
 
 ;; -----------------------------------------
 ;; convert integer to null-terminated string
@@ -18,34 +51,78 @@ _itos:
     mov rax, rsi
     mov rcx, buffer1            ; rcx is pointer to temp buffer
     mov rsi, 10                 ; rsi is divisor
-
     mov r8, 0                   ; r8 marks negative numbers, default to 0
     cmp rax, 0
-    jge _itosLoop
+    jge .loop
     mov r8, 1                   ; set r8 to 1 if number is negative
     neg rax                     ; and change it to positive for processing
-
-_itosLoop:
+.loop:
     mov rdx, 0
     div rsi                     ; divide by 10
-
     add rdx, 48                 ; convert to ascii
-    mov [rcx], rdx              ; store in buffer
+    mov [rcx], dl               ; store one byte in buffer
     inc rcx
-
     cmp rax, 0                  ; continue if we have more
-    jnz _itosLoop
-
+    jnz .loop
     cmp r8, 0                   ; add sign if negative
-    jz _itosFinish
+    jz .finish
     mov byte [rcx], '-'
     inc rcx
-
-_itosFinish:
+.finish:
     mov byte [rcx], 0           ; terminate with null
-
     mov rsi, buffer1            ; reverse string using strrcpy
-    call _strrcpy               ; and write it to rdi
+    call _strrcpy               ; rdi is passed along unmodified
+    ret
+
+;; -------------------------
+;; convert string to integer
+;; input: rdi, string
+;; output: rax
+;; -------------------------
+
+_stoi:
+    mov rax, 0
+    mov rcx, 0
+    mov rsi, 10                 ; multiplier
+    mov r8, 0                   ; r8 marks negative number, default to 0
+    mov cl, [rdi]               ; check first character
+    cmp rcx, '-'
+    jne .loop
+    mov r8, 1                   ; set r8 to 1 for negative
+    inc rdi
+.loop:
+    mov cl, [rdi]               ; read character
+    cmp rcx, 48                 ; < 48, finish
+    jl .finish
+    cmp rcx, 57                 ; > 57, finish
+    jg .finish
+    mul rsi                     ; multiple previous result by 10
+    sub rcx, 48                 ; convert from ascii (48)
+    add rax, rcx                ; and add the value
+    inc rdi                     ; start over
+    jmp .loop
+.finish:
+    cmp r8, 0                   ; make negative if r8 is set
+    jz .finish2
+    neg rax
+.finish2:
+    ret
+
+;; --------------------------------
+;; print single character to stdout
+;; input: rdi
+;; uses: buffer2
+;; --------------------------------
+
+_printc:
+    mov rcx, buffer2
+    mov [rcx], dil
+    mov byte [rcx + 1], 0
+    mov rax, SYS_WRITE
+    mov rdi, STDOUT
+    mov rsi, buffer2
+    mov rdx, 1
+    syscall
     ret
 
 ;; -----------------------
@@ -57,7 +134,7 @@ _itosFinish:
 _printi:
     mov rsi, rdi
     mov rdi, buffer2
-    call _itos
+    call _itos                  ; itos uses buffer1
     mov rdi, buffer2
     call _prints
     ret
@@ -84,14 +161,14 @@ _prints:
 
 _strlen:
     mov rax, 0
-_strlenLoop:
+.loop:
     mov cl, [rdi]
     cmp cl, 0
-    jz _strlenFinish
+    jz .finish
     inc rax
     inc rdi
-    jmp _strlenLoop
-_strlenFinish:
+    jmp .loop
+.finish:
     ret
 
 ;; ---------------------------
@@ -103,16 +180,16 @@ _strlenFinish:
 
 _strcpy:
     mov rax, 0
-_strcpyLoop:
+.loop:
     mov cl, [rsi]
     cmp cl, 0
-    jz _strcpyFinish
+    jz .finish
     mov [rdi], cl
     inc rax
     inc rdi
     inc rsi
-    jmp _strcpyLoop
-_strcpyFinish:
+    jmp .loop
+.finish:
     mov byte [rdi], 0
     ret
 
@@ -130,15 +207,15 @@ _strrcpy:
     pop rdi
     mov rcx, rax                ; use rcx as counter
     add rsi, rax                ; increase source pointer
-_strrcpyLoop:
+.loop:
     cmp rcx, 0
-    jz _strrcpyFinish
+    jz .finish
     dec rsi                     ; dec before read to exclude null-byte at end
     mov dl, [rsi]
     mov [rdi], dl
     inc rdi
     dec rcx
-    jmp _strrcpyLoop
-_strrcpyFinish:
+    jmp .loop
+.finish:
     mov byte [rdi], 0
     ret
