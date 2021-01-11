@@ -13,13 +13,13 @@ section .bss
     buffer2 resb 32
 
 section .text
-    global _exit, _gets, _itos, _stoi, _printc, _printi, _prints, _strlen, _strcpy, _strrcpy
 
 ;; ---------------------
 ;; Exit the program
 ;; input: rdi, exit code
 ;; ---------------------
 
+global _exit
 _exit:
     mov rax, SYS_EXIT
     syscall                     ; rdi is passed on unchanged
@@ -32,6 +32,7 @@ _exit:
 ;; input: rsi, length
 ;; ---------------------
 
+global _gets
 _gets:
     mov rax, SYS_READ
     mov rdx, rsi                ; arg3: length
@@ -47,6 +48,7 @@ _gets:
 ;; uses: buffer1
 ;; -----------------------------------------
 
+global _itos
 _itos:
     mov rax, rsi
     mov rcx, buffer1            ; rcx is pointer to temp buffer
@@ -71,7 +73,7 @@ _itos:
 .finish:
     mov byte [rcx], 0           ; terminate with null
     mov rsi, buffer1            ; reverse string using strrcpy
-    call _strrcpy               ; rdi is passed along unmodified
+    ; call _strrcpy               ; rdi is passed along unmodified
     ret
 
 ;; -------------------------
@@ -80,6 +82,7 @@ _itos:
 ;; output: rax
 ;; -------------------------
 
+global _stoi
 _stoi:
     mov rax, 0
     mov rcx, 0
@@ -108,114 +111,71 @@ _stoi:
 .finish2:
     ret
 
-;; --------------------------------
-;; print single character to stdout
-;; input: rdi
-;; uses: buffer2
-;; --------------------------------
+;; Copy bytes from source to destination
+;; Inputs: RDI = destination, RSI = source, RDX = length
 
-_printc:
-    mov rcx, buffer2
-    mov [rcx], dil
-    mov byte [rcx + 1], 0
-    mov rax, SYS_WRITE
-    mov rdi, STDOUT
-    mov rsi, buffer2
-    mov rdx, 1
-    syscall
+global memcpy
+memcpy:
+    mov rcx, rdx
+    cld
+    rep movsb                   ; copy RCX bytes from RSI to RDI
     ret
 
-;; -----------------------
-;; print integer to stdout
-;; input: rdi
-;; uses: buffer2
-;; -----------------------
+;; Set bytes to specified value
+;; Inputs: RDI = destination, RSI = value to set, RDX = length
 
-_printi:
-    mov rsi, rdi
-    mov rdi, buffer2
-    call _itos                  ; itos uses buffer1
-    mov rdi, buffer2
-    call _prints
+global memset
+memset:
+    mov rax, rsi
+    mov rcx, rdx
+    cld
+    rep stosb
     ret
 
-;; --------------------------------------
-;; print null-terminated string to stdout
-;; input: rdi
-;; --------------------------------------
+;; Print null-terminated string to stdout
+;; Input: RDI
 
-_prints:
+global prints
+prints:
     mov rsi, rdi                ; arg2: string (strlen does not modify rsi)
-    call _strlen                ; length into rax
+    call strlen                 ; length into rax
     mov rdi, STDOUT             ; arg1: stdout
     mov rdx, rax                ; arg3: length
     mov rax, SYS_WRITE          ; syscall id
     syscall
     ret
 
-;; ------------------------------------------
-;; calculate length of null-terminated string
-;; input: rdi
-;; output: rax
-;; ------------------------------------------
+;; Copy null-terminated string
+;; Inputs: RDI = destination, RSI = source
 
-_strlen:
-    mov rax, 0
-.loop:
-    mov cl, [rdi]
-    cmp cl, 0
-    jz .finish
-    inc rax
-    inc rdi
-    jmp .loop
-.finish:
-    ret
+global strcpy
+strcpy:
+    test sil, sil
 
-;; ---------------------------
-;; copy null-terminated string
-;; input: rdi, destination
-;; input: rsi, source
-;; output: rax, length
-;; ---------------------------
+    movsb                       ; copy one byte from RSI to RDI
+    test
 
-_strcpy:
-    mov rax, 0
-.loop:
-    mov cl, [rsi]
-    cmp cl, 0
-    jz .finish
-    mov [rdi], cl
-    inc rax
-    inc rdi
-    inc rsi
-    jmp .loop
-.finish:
-    mov byte [rdi], 0
-    ret
-
-;; --------------------------------------
-;; copy null-terminated string in reverse
-;; input: rdi, destination
-;; input: rsi, source
-;; output: rax, length
-;; --------------------------------------
-
-_strrcpy:
-    push rdi                    ; store rdi in stack (strlen does not modify rsi)
+    mov r8, rdi                 ; store rdi in r8
     mov rdi, rsi
-    call _strlen                ; calculate length into rax
-    pop rdi
-    mov rcx, rax                ; use rcx as counter
-    add rsi, rax                ; increase source pointer
-.loop:
-    cmp rcx, 0
-    jz .finish
-    dec rsi                     ; dec before read to exclude null-byte at end
-    mov dl, [rsi]
-    mov [rdi], dl
-    inc rdi
-    dec rcx
-    jmp .loop
-.finish:
-    mov byte [rdi], 0
+    call strlen                 ; length into rax
+    mov rdi, r8
+    mov rcx, rax
+    inc rcx                     ; include null-terminator
+    cld                         ; clear the DF flag
+    rep movsb                   ; copy RCX bytes from RSI to RDI
+    ret
+
+;; Calculate length of null-terminated string
+;; Inputs: RDI
+
+global strlen
+strlen:
+    xor rax, rax
+    mov rdx, rdi                ; store rdi in rdx
+    mov rcx, -1
+    cld
+    repne scasb                 ; loop until [rdi] != rax
+    mov rax, rdi
+    sub rax, rdx
+    dec rax                     ; remove null-terminator
     ret
