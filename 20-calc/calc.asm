@@ -2,43 +2,10 @@
 ;; Calculator
 ;;
 
+%include "../macro.asm"
+
 ;; Definitions in lib.asm
-extern _exit, _gets, _stoi, _printc, _printi, _prints
-
-;; Macros
-
-%macro exit 1
-    mov rdi, %1
-    call _exit
-%endmacro
-
-%macro gets 2
-    mov rdi, %1
-    mov rsi, %2
-    call _gets
-%endmacro
-
-%macro stoi 1
-    mov rdi, %1
-    call _stoi
-%endmacro
-
-%macro printc 1
-    mov rdi, %1
-    call _printc
-%endmacro
-
-%macro printi 1
-    mov rdi, %1
-    call _printi
-%endmacro
-
-%macro prints 1
-    mov rdi, %1
-    call _prints
-%endmacro
-
-;; End of macros
+extern exit, gets, itos, stoi, prints
 
 section .data
     ; Strings support special escape characters if they are defined using backticks.
@@ -53,32 +20,33 @@ section .bss
     bufOp resb 4
     bufVal1 resb 32
     bufVal2 resb 32
+    bufRes resb 32
 
 section .text
     global _start
 
 _start:
-    prints welcome              ; read input from user
-    prints askOp
-    gets bufOp, 4
-    prints askVal1
-    gets bufVal1, 32
-    prints askVal2
-    gets bufVal2, 32
-    stoi bufVal1                ; convert args from string to int
+    call1 prints, welcome
+    call1 prints, askOp
+    call2 gets, bufOp, 4
+    call1 prints, askVal1
+    call2 gets, bufVal1, 32
+    call1 prints, askVal2
+    call2 gets, bufVal2, 32
+
+    call1 stoi, bufVal1
     push rax
-    stoi bufVal2
+    call1 stoi, bufVal2
     mov rdi, rax
     pop rax
-    mov rcx, bufOp              ; store operator in rsi
-    mov rsi, 0
-    mov sil, [rcx]
-    call _calc                  ; call subroutine
-    mov rbx, rax
-    prints result               ; print the result
-    printi rbx
-    printc 10
-    exit 0
+    mov rcx, bufOp
+    movzx rsi, byte [rcx]
+    call _calc
+
+    call2 itos, bufRes, rax
+    call1 prints, result
+    call1 prints, bufRes
+    call1 exit, 0
 
 ;; subroutine to perform calculation
 ;; input: rax, first value
@@ -93,8 +61,8 @@ _calc:
     je .mul
     cmp rsi, '/'
     je .div
-    prints unknownOp
-    exit 1
+    call1 prints, unknownOp
+    call1 exit, 1
 .add:
     add rax, rdi
     jmp .finish
