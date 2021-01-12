@@ -150,19 +150,12 @@ prints:
 
 global strcpy
 strcpy:
-    test sil, sil
-
-    movsb                       ; copy one byte from RSI to RDI
-    test
-
-    mov r8, rdi                 ; store rdi in r8
-    mov rdi, rsi
-    call strlen                 ; length into rax
-    mov rdi, r8
-    mov rcx, rax
-    inc rcx                     ; include null-terminator
-    cld                         ; clear the DF flag
-    rep movsb                   ; copy RCX bytes from RSI to RDI
+    cld
+.loop
+    lodsb
+    stosb
+    test al, al
+    jnz .loop
     ret
 
 ;; Calculate length of null-terminated string
