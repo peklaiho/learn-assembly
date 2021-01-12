@@ -8,32 +8,23 @@ SYS_READ equ 0
 SYS_WRITE equ 1
 SYS_EXIT equ 60
 
-section .bss
-    buffer1 resb 32
-    buffer2 resb 32
-
 section .text
 
-;; ---------------------
 ;; Exit the program
-;; input: rdi, exit code
-;; ---------------------
+;; Inputs: RDI = exit code
 
-global _exit
-_exit:
+global exit
+exit:
     mov rax, SYS_EXIT
     syscall                     ; rdi is passed on unchanged
     ret
 
-;; ---------------------
 ;; Read input from stdin
 ;; Note that result includes newline character
-;; input: rdi, buffer
-;; input: rsi, length
-;; ---------------------
+;; Inputs: RDI = buffer, RSI = length
 
-global _gets
-_gets:
+global gets
+gets:
     mov rax, SYS_READ
     mov rdx, rsi                ; arg3: length
     mov rsi, rdi                ; arg2: buffer
@@ -41,71 +32,68 @@ _gets:
     syscall
     ret
 
-;; -----------------------------------------
-;; convert integer to null-terminated string
-;; input: rdi, buffer for string
-;; input: rsi, integer to convert
-;; uses: buffer1
-;; -----------------------------------------
+;; Convert integer to null-terminated string
+;; Inputs: RDI = string, RSI = integer
 
-global _itos
-_itos:
+global itos
+itos:
+    cld
+    xor rcx, rcx
     mov rax, rsi
-    mov rcx, buffer1            ; rcx is pointer to temp buffer
-    mov rsi, 10                 ; rsi is divisor
-    mov r8, 0                   ; r8 marks negative numbers, default to 0
+    mov rsi, 10                 ; divisor
+    xor r8, r8                  ; r8 marks negative
     cmp rax, 0
-    jge .loop
-    mov r8, 1                   ; set r8 to 1 if number is negative
-    neg rax                     ; and change it to positive for processing
-.loop:
+    jge .loopPush
+    mov r8, 1
+    neg rax
+.loopPush:
     mov rdx, 0
-    div rsi                     ; divide by 10
-    add rdx, 48                 ; convert to ascii
-    mov [rcx], dl               ; store one byte in buffer
+    div rsi
+    add rdx, '0'
+    push rdx
     inc rcx
-    cmp rax, 0                  ; continue if we have more
-    jnz .loop
-    cmp r8, 0                   ; add sign if negative
-    jz .finish
-    mov byte [rcx], '-'
-    inc rcx
-.finish:
-    mov byte [rcx], 0           ; terminate with null
-    mov rsi, buffer1            ; reverse string using strrcpy
-    ; call _strrcpy               ; rdi is passed along unmodified
+    test rax, rax
+    jnz .loopPush
+    test r8, r8
+    jz .loopPop
+    mov rax, '-'
+    stosb
+.loopPop:
+    pop rax
+    stosb
+    dec rcx
+    test rcx, rcx
+    jnz .loopPop
+    mov byte [rdi], 0           ; null-terminator
     ret
 
-;; -------------------------
-;; convert string to integer
-;; input: rdi, string
-;; output: rax
-;; -------------------------
+;; Convert string to integer
+;; Inputs: RDI
 
-global _stoi
-_stoi:
-    mov rax, 0
-    mov rcx, 0
+global stoi
+stoi:
+    xor rax, rax
+    xor rcx, rcx
     mov rsi, 10                 ; multiplier
-    mov r8, 0                   ; r8 marks negative number, default to 0
-    mov cl, [rdi]               ; check first character
-    cmp rcx, '-'
+    xor r8, r8                  ; r8 marks negative
+    mov cl, [rdi]
+    cmp cl, '-'
     jne .loop
-    mov r8, 1                   ; set r8 to 1 for negative
+    mov r8, 1
     inc rdi
 .loop:
-    mov cl, [rdi]               ; read character
-    cmp rcx, 48                 ; < 48, finish
+    mov cl, [rdi]
+    cmp cl, '0'
     jl .finish
-    cmp rcx, 57                 ; > 57, finish
+    cmp cl, '9'
     jg .finish
-    mul rsi                     ; multiple previous result by 10
-    sub rcx, 48                 ; convert from ascii (48)
-    add rax, rcx                ; and add the value
-    inc rdi                     ; start over
-    jmp .loop
+    mul rsi                     ; multiply previous value
+    sub cl, '0'
+    add rax, rcx
+    inc rdi
+    jmp .loop                   ; start over
 .finish:
-    cmp r8, 0                   ; make negative if r8 is set
+    test r8, r8
     jz .finish2
     neg rax
 .finish2:
@@ -133,7 +121,7 @@ memset:
     ret
 
 ;; Print null-terminated string to stdout
-;; Input: RDI
+;; Inputs: RDI
 
 global prints
 prints:
@@ -151,7 +139,7 @@ prints:
 global strcpy
 strcpy:
     cld
-.loop
+.loop:
     lodsb
     stosb
     test al, al
@@ -164,11 +152,10 @@ strcpy:
 global strlen
 strlen:
     xor rax, rax
-    mov rdx, rdi                ; store rdi in rdx
     mov rcx, -1
     cld
     repne scasb                 ; loop until [rdi] != rax
-    mov rax, rdi
-    sub rax, rdx
-    dec rax                     ; remove null-terminator
+    mov rax, rcx
+    add rax, 2
+    neg rax
     ret
