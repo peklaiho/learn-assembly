@@ -1,3 +1,4 @@
 *.o
 */hello
 20-calc/calc
+99-benchmark/bm*
