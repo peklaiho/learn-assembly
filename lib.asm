@@ -32,6 +32,19 @@ gets:
     syscall
     ret
 
+;; Print null-terminated string to stdout
+;; Inputs: RDI
+
+global prints
+prints:
+    mov rsi, rdi                ; arg2: string (strlen does not modify rsi)
+    call strlen                 ; length into rax
+    mov rdi, STDOUT             ; arg1: stdout
+    mov rdx, rax                ; arg3: length
+    mov rax, SYS_WRITE          ; syscall id
+    syscall
+    ret
+
 ;; Convert integer to null-terminated string
 ;; Inputs: RDI = string, RSI = integer
 
@@ -84,9 +97,9 @@ stoi:
 .loop:
     mov cl, [rdi]
     cmp cl, '0'
-    jl .finish
+    jb .finish
     cmp cl, '9'
-    jg .finish
+    ja .finish
     mul rsi                     ; multiply previous value
     sub cl, '0'
     add rax, rcx
@@ -120,17 +133,28 @@ memset:
     rep stosb
     ret
 
-;; Print null-terminated string to stdout
-;; Inputs: RDI
+;; Compare two strings
+;; Inputs: RDI, RSI
 
-global prints
-prints:
-    mov rsi, rdi                ; arg2: string (strlen does not modify rsi)
-    call strlen                 ; length into rax
-    mov rdi, STDOUT             ; arg1: stdout
-    mov rdx, rax                ; arg3: length
-    mov rax, SYS_WRITE          ; syscall id
-    syscall
+global strcmp
+strcmp:
+    mov al, [rdi]
+    cmp al, [rsi]
+    jne .noteq
+    test al, al
+    jz .equal
+    inc rdi
+    inc rsi
+    jmp strcmp
+.equal:
+    mov rax, 0
+    ret
+.noteq:
+    js .negres                  ; check sign flag (SF)
+    mov rax, 1
+    ret
+.negres:
+    mov rax, -1
     ret
 
 ;; Copy null-terminated string
