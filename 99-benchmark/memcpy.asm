@@ -1,0 +1,26 @@
+extern exit, memcpy
+
+section .data
+    text db `WPYMLy2fL88AYpYDjJH575YSniXKduqRAXPYFfif6cwKAqHffqAdmFpxWhWXL3U3xrdFKLAeCFcPJ7Z9N8v6AnUkZDHgaj2giHM8WfUF4dAPNfHUHtQD4xu5Sff2ddESCr9QxVAHNxwZHYSr9jxGqxRryCfMrVYRRik3aJdndhR6NCTTQmTuRAYBq9fYURPAa4vtxwcGLqQi8rHakzw8J8SemdBAunx6BLxQEXuY48jhrBybiDW6f85vehhLHX4cdn3ZD4ALkYWfBFnKYF3HxLDL6Xtd9dphwaS9X7Gj2DXhXuhLiGg3fpvyWEyTFnzJrkVu27UFrfrFkMminQPikaVUVf82ZbMzY6K45av426LhkEiCiRER43bPCctqGuUPvEabx5Qpd2j7uKEQnRNHrEKFd3WEpive5TPyxkFJkDSQ4BU6W5PXDNbUc4zf2XK3gfzjuXKiwnHzq2z6HXLZeBa3cDMcwnwZWZptiYCFZw3KPp4nkeTvbC64H5ZuJZJbBFbW6pmUnCGnpuCdvW8qNu2VXNUCavPVeEKiqZL8KadDigZ6MHbegMBWefmhbSmukZv4V9Nv8FqUFJrhxzj4B97wHbUUUKVjV2R7wbVeaJvZFne2bVDMUuqLhBPcrVu2x9x8yUd2BS7zh845hKQ7mB9c9YeRCMtfgcPVtAxGb2tb5XjLQ82WWEVamjM2PzJUqbGCCVLFL6FWbKXKcMYa9hUWKtgygnGtkFb5W8Rhe3nRYrjUPBppLJnN7zzfP8eFXEdaKPmPWQwy5nRRP65xwd9YUmn6JdWPduw5XatZD5Ux7GkkU9pKNpWhka7q5hJhCFeKMirSKdXwMe7PWZiAyXBhPU9j4gdB8PhLmLCX9nyvjrcidSWziPEaiq4c5PhPAaAZ3SU64TZT3QrSuNRTdFm2p6Fak5ZipqvpHEVbTZJKMc9iz5uNbni26634jzduPtYvWfxWAe8tempn9rZSCuqYk9NrSndiwBnthncugJZtRygnBea7KmMYXPKtBJg8`
+
+section .bss
+    buf1 resb 1024
+
+section .text
+    global _start
+
+_start:
+    mov r15, 1_000_000_00
+.loop:
+    mov rdi, buf1
+    mov rsi, text
+    mov rdx, 1024
+    call memcpy
+
+    dec r15
+    test r15, r15
+    jnz .loop
+
+    ; exit
+    mov rdi, 0
+    call exit
