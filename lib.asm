@@ -112,6 +112,25 @@ stoi:
 .finish2:
     ret
 
+;; Compare two memory locations
+;; Inputs: RDI, RSI, RDX = length
+
+global memcmp
+memcmp:
+    mov rcx, rdx
+    cld
+    repe cmpsb                  ; repeat until equal or rcx=0
+    jz .equal
+    jns .negres
+    mov rax, 1
+    ret
+.negres:
+    mov rax, -1
+    ret
+.equal:
+    mov rax, 0
+    ret
+
 ;; Copy bytes from source to destination
 ;; Inputs: RDI = destination, RSI = source, RDX = length
 
